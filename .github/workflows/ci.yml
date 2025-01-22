@@ -61,7 +61,21 @@ jobs:
             CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y
 
             CONFIG_PACKAGE_luci=y
+            CONFIG_PACKAGE_kmod-ipt-fullconenat=m
+            CONFIG_PACKAGE_iptables-mod-fullconenat=m
           EOF
+
+          # cd to OpenWrt source path
+          # Download kernel patch to target/linux/generic/hack-5.4/
+          wget -P target/linux/generic/hack-5.4/ https://github.com/Paull/openwrt-fullconenat/raw/master/files/952-net-conntrack-events-support-multiple-registrant.patch
+
+          # Download firewall3 patch to package/network/config/firewall/patches/
+          mkdir package/network/config/firewall/patches
+          wget -P package/network/config/firewall/patches/ https://github.com/Paull/openwrt-fullconenat/raw/master/files/fullconenat-fw3.patch
+
+          # Clone this repo
+          git clone -b master --single-branch https://github.com/Paull/openwrt-fullconenat package/fullconenat
+
           make defconfig
 
       - name: Download
@@ -75,7 +89,6 @@ jobs:
       - name: Build toolchain
         run: |
           make -j$(nproc) toolchain/install
-
       - name: Build all
         run: |
           make -j$(nproc) IGNORE_ERRORS=1
