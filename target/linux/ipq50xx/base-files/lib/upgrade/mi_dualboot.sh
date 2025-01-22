@@ -46,8 +46,17 @@ mi_dualboot_do_upgrade() {
 	esac
 
 	local mtdnum="$( find_mtd_index "${CI_UBIPART}" )"
-	v "Flashing to ${CI_UBIPART}(mtd${mtdnum})"
-	ubiformat "/dev/mtd${mtdnum}" -f "$1" -y || return 1
+	if [ "$mtdnum" = "" ]; then
+		echo "$CI_UBIPART not exists, fallback to rootfs"
+		CI_UBIPART="rootfs"
+		current=0
+		mtdnum="$( find_mtd_index "${CI_UBIPART}" )"
+		v "Flashing to ${CI_UBIPART}(mtd${mtdnum})"
+		mtd write "$1" "${CI_UBIPART}" || return 1
+	else
+		v "Flashing to ${CI_UBIPART}(mtd${mtdnum})"
+		ubiformat "/dev/mtd${mtdnum}" -f "$1" -y || return 1
+	fi
 	sync
 
 	ubiattach --mtdn "${mtdnum}"

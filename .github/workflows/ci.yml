@@ -36,7 +36,28 @@ jobs:
         run: |
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          # fixed https://github.com/openwrt/packages/commit/7118a45a9b091439348cd5341bcd632e1b2a90e8
+          sed -i 's/(init/(gl_mifi_mcu_init/g' feeds/packages/utils/gl-mifi-mcu/src/module.c
+          sed -i 's/ init/ gl_mifi_mcu_init/g' feeds/packages/utils/gl-mifi-mcu/src/module.c
+          sed -i 's/(exit/(gl_mifi_mcu_exit/g' feeds/packages/utils/gl-mifi-mcu/src/module.c
+          sed -i 's/ exit/ gl_mifi_mcu_exit/g' feeds/packages/utils/gl-mifi-mcu/src/module.c
+          
+          # Patch LuCI 以增添fullcone开关
+          pushd feeds/luci
+          git apply <  ../../patches/fullconenat-luci.patch
+          popd
 
+          # cd to OpenWrt source path
+          # Download kernel patch to target/linux/generic/hack-5.4/
+          wget -P target/linux/generic/hack-5.4/ https://github.com/Paull/openwrt-fullconenat/raw/master/files/952-net-conntrack-events-support-multiple-registrant.patch
+
+          # Download firewall3 patch to package/network/config/firewall/patches/
+          mkdir package/network/config/firewall/patches
+          wget -P package/network/config/firewall/patches/ https://github.com/Paull/openwrt-fullconenat/raw/master/files/fullconenat-fw3.patch
+
+          # Clone this repo
+          git clone -b master --single-branch https://github.com/Paull/openwrt-fullconenat package/fullconenat
+          ls -l $PWD/
       - name: Configure
         run: |
           cat <<EOF | sed -E 's/^  //' >.config
@@ -61,7 +82,10 @@ jobs:
             CONFIG_PACKAGE_kmod-qca-nss-drv-pppoe=y
 
             CONFIG_PACKAGE_luci=y
+            CONFIG_PACKAGE_kmod-ipt-fullconenat=y
+            CONFIG_PACKAGE_iptables-mod-fullconenat=y
           EOF
+          ls -l $PWD/
           make defconfig
 
       - name: Download
@@ -75,7 +99,6 @@ jobs:
       - name: Build toolchain
         run: |
           make -j$(nproc) toolchain/install
-
       - name: Build all
         run: |
           make -j$(nproc) IGNORE_ERRORS=1
